@@ -68,7 +68,6 @@
 #include "sslconn.h"
 #include "version.h"
 
-
 typedef struct _NingAccount NingAccount;
 
 struct _NingAccount {

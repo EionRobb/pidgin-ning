@@ -19,6 +19,7 @@
  */
 
 #include "libning.h"
+#include "ning_connection.h"
 
 JsonObject *ning_json_parse(const gchar *data, gssize data_len)
 {
@@ -72,7 +73,7 @@ static GList *ning_statuses(PurpleAccount *account)
 void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer userdata)
 {
 	JsonObject *obj;
-	gchar *result;
+	const gchar *result;
 	const gchar *roomId;
 	
 	obj = ning_json_parse(data, data_len);
@@ -83,17 +84,17 @@ void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	result = json_node_get_string(json_object_get_member(obj, "result"));
 	if (!g_str_equal(result, "ok"))
 	{
-		purple_connection_error(gc, _("Could not log on"));
+		purple_connection_error(na->pc, _("Could not log on"));
 		return;
 	}
 	purple_connection_update_progress(na->pc, _("Joining public chat"), 5, 5);
 	purple_connection_set_state(na->pc, PURPLE_CONNECTED);
 	
-	g_free(chat_token);
+	g_free(na->chat_token);
 	na->chat_token = g_strdup(json_node_get_string(json_object_get_member(obj, "token")));
 	
-	roomId = json_node_get_string(json_object_get_member(obj, "roomId");
-	serv_got_joined_chat(na->gc, 1, roomId);
+	roomId = json_node_get_string(json_object_get_member(obj, "roomId"));
+	serv_got_joined_chat(na->pc, 1, roomId);
 	
 	json_object_unref(obj);
 }
@@ -118,7 +119,7 @@ void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	encoded_app = g_strdup(purple_url_encode(na->ning_app));
 	encoded_id = g_strdup(purple_url_encode(na->ning_id));
 	
-	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s", encoded_app, encoded_app, encoded_id, encoded_id)
+	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s", encoded_app, encoded_app, encoded_id, encoded_id);
 	ning_post_or_get(na, NING_METHOD_POST, na->chat_domain,
 					 postdata, NULL, ning_chat_login_cb, NULL, FALSE);
 	
@@ -143,7 +144,7 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	tmp = g_strstr_len(data, data_len, search);
 	if (tmp == NULL)
 	{
-		purple_connection_error(gc, _("NingID not found"));
+		purple_connection_error(na->pc, _("NingID not found"));
 		return;
 	}
 	tmp += strlen(search);
@@ -154,7 +155,7 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	tmp = g_strstr_len(data, data_len, xgtoken_start);
 	if (tmp == NULL)
 	{
-		purple_connection_error(gc, _("xgToken not found"));
+		purple_connection_error(na->pc, _("xgToken not found"));
 		return;
 	}
 	tmp += strlen(xgtoken_start);
@@ -174,7 +175,7 @@ void ning_scan_cookies_for_id(gchar *key, gchar *value, NingAccount *na)
 {
 	if (g_str_has_prefix(key, "xn_id_"))
 	{
-		g_free(na->ning_app)
+		g_free(na->ning_app);
 		na->ning_app = g_strdup(&key[6]);
 	}
 }
@@ -190,7 +191,7 @@ static void ning_login_cb(NingAccount *na, gchar *response, gsize len,
 	g_hash_table_foreach(na->cookie_table, (GHFunc)ning_scan_cookies_for_id, na);
 	
 	//Load the homepage to grab the interesting info
-	ning_post_or_get(na, NING_METHOD_GET, purple_account_get_string(account, "host", NULL),
+	ning_post_or_get(na, NING_METHOD_GET, purple_account_get_string(na->account, "host", NULL),
 					"/", NULL, ning_login_home_cb, NULL, FALSE);
 }
 
@@ -199,6 +200,7 @@ static void ning_login(PurpleAccount *account)
 	NingAccount *na;
 	gchar *postdata, *encoded_username, *encoded_password;
 	gchar *encoded_host, *url;
+	const gchar *host;
 	
 	purple_debug_info("ning", "login\n");
 	
@@ -233,7 +235,7 @@ static void ning_login(PurpleAccount *account)
 	host = purple_account_get_string(account, "host", NULL);
 	if (host == NULL || host[0] == '\0')
 	{
-		purple_connection_error(gc, _("Host not set"));
+		purple_connection_error(na->pc, _("Host not set"));
 		return;
 	}
 	
@@ -256,12 +258,12 @@ static void ning_close(PurpleConnection *pc)
 	
 	na = pc->proto_data;
 	
-	host_encoded = g_strdup(purple_url_encode(purple_account_get_string(account, "host", "")));
+	host_encoded = g_strdup(purple_url_encode(purple_account_get_string(na->account, "host", "")));
 	xg_token_encoded = g_strdup(purple_url_encode(na->xg_token));
 	
 	postdata = g_strdup_printf("target=%s&xg_token=%s", host_encoded, xg_token_encoded);
 	
-	ning_post_or_get(na, NING_METHOD_POST, purple_account_get_string(account, "host", NULL),
+	ning_post_or_get(na, NING_METHOD_POST, purple_account_get_string(na->account, "host", NULL),
 					 "/main/authorization/signOut", postdata, NULL, NULL, FALSE);
 	
 	g_free(host_encoded);
@@ -407,9 +409,6 @@ static PurplePluginProtocolInfo prpl_info = {
 #else
    (gpointer) sizeof(PurplePluginProtocolInfo)
 #endif
-							   
-	sizeof(PurplePluginProtocolInfo), /* struct_size */
-	NULL,                   /* get_account_text_table */
 };
 
 static PurplePluginInfo info = {
