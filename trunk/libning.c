@@ -77,6 +77,11 @@ void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	const gchar *roomId;
 	
 	obj = ning_json_parse(data, data_len);
+
+	purple_debug_info("ning", "chat_login_cb: %s\n", data?data:"(null)");
+	
+	if (data == NULL || data_len == 0)
+		return;
 	
 	//{"command": "login","result": "ok","roomId": "thoughtleaders.thoughtleaders",
 	// "count": 2,"token": "37lfxean70eqh_122d86d5cf7_6f95cb8e_122d49f8e48"}
