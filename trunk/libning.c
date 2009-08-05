@@ -126,7 +126,7 @@ void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	
 	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s", encoded_app, encoded_app, encoded_id, encoded_id);
 	ning_post_or_get(na, NING_METHOD_POST, na->chat_domain,
-					 postdata, NULL, ning_chat_login_cb, NULL, FALSE);
+			"/xn/presence/login", postdata, ning_chat_login_cb, NULL, FALSE);
 	
 	g_free(postdata);
 	g_free(encoded_app);
@@ -174,6 +174,7 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	url = g_strdup_printf("/xn/redirector/redirect?a=%s", purple_url_encode(na->ning_app));
 	ning_post_or_get(na, NING_METHOD_GET, "chat01.ningim.com",
 					 url, NULL, ning_chat_redir_cb, NULL, FALSE);
+	g_free(url);
 }
 
 void ning_scan_cookies_for_id(gchar *key, gchar *value, NingAccount *na)
