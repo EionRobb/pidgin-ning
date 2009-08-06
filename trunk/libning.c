@@ -20,6 +20,7 @@
 
 #include "libning.h"
 #include "ning_connection.h"
+#include "ning_chat.h"
 
 JsonObject *ning_json_parse(const gchar *data, gssize data_len)
 {
@@ -99,7 +100,8 @@ void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	na->chat_token = g_strdup(json_node_get_string(json_object_get_member(obj, "token")));
 	
 	roomId = json_node_get_string(json_object_get_member(obj, "roomId"));
-	serv_got_joined_chat(na->pc, 1, roomId);
+	
+	ning_join_chat_by_name(na, roomId);
 	
 	json_object_unref(obj);
 }
@@ -314,6 +316,40 @@ static GHashTable *ning_get_account_text_table(PurpleAccount *account)
 }
 #endif
 
+void
+ning_change_passwd(PurpleConnection *pc, const char *old_pass, const char *new_pass)
+{
+	NingAccount *na;
+	PurpleAccount *account;
+	gchar *encoded_username;
+	gchar *encoded_password;
+	gchar *encoded_token;
+	
+	if (pc == NULL)
+		return;
+	na = pc->proto_data;
+	if (na == NULL || na->xg_token == NULL)
+		return;
+	account = pc->account;
+	if (account == NULL)
+		return;
+	
+	encoded_username = g_strdup(purple_url_encode(purple_account_get_username(account)));
+	encoded_password = g_strdup(purple_url_encode(new_pass));
+	encoded_token = g_strdup(purple_url_encode(na->xg_token));
+	
+	postdata = g_strdup_printf("emailAddress=%s&password=%s&xg_token=%s",
+							   encoded_username, encoded_password, encoded_token);
+	
+	ning_post_or_get(na, NING_METHOD_POST, purple_account_get_string(na->account, "host", NULL),
+					 "/profiles/settings/updateEmailAddress", postdata, NULL, NULL, FALSE);
+	
+	g_free(postdata);
+	g_free(encoded_token);
+	g_free(encoded_password);
+	g_free(encoded_username);
+}
+
 
 /******************************************************************************/
 /* Plugin functions */
@@ -364,7 +400,7 @@ static PurplePluginProtocolInfo prpl_info = {
 	NULL,                   /* get_info */
 	NULL,                   /* set_status */
 	NULL,                   /* set_idle */
-	NULL,                   /* change_passwd */
+	ning_change_passwd,     /* change_passwd */
 	NULL,                   /* add_buddy */
 	NULL,                   /* add_buddies */
 	NULL,                   /* remove_buddy */
@@ -374,13 +410,13 @@ static PurplePluginProtocolInfo prpl_info = {
 	NULL,                   /* rem_permit */
 	NULL,                   /* rem_deny */
 	NULL,                   /* set_permit_deny */
-	NULL,                   /* join_chat */
+	ning_join_chat,         /* join_chat */
 	NULL,                   /* reject chat invite */
 	NULL,                   /* get_chat_name */
 	NULL,                   /* chat_invite */
 	NULL,                   /* chat_leave */
-	NULL,                   /* chat_whisper */
-	NULL,                   /* chat_send */
+	ning_chat_whisper,      /* chat_whisper */
+	ning_chat_chat,         /* chat_send */
 	NULL,                   /* keepalive */
 	NULL,                   /* register_user */
 	NULL,                   /* get_cb_info */
