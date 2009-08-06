@@ -24,6 +24,90 @@ void (*join_chat)(PurpleConnection *, GHashTable *components);
 PurpleConversation* purple_find_chat(const PurpleConnection *gc, int id);
  */
 
+typedef struct _NingChat {
+	NingAccount *na;
+	gchar *roomId;
+	gint purple_id;
+	gchar *ning_hash;
+	
+	guint userlist_timer;
+	guint message_poll_timer;
+} NingChat;
+
+void
+ning_chat_get_history_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
+{
+	NingChat *chat;
+	
+	chat = userdata;
+}
+
+gboolean
+ning_chat_get_history(NingChat *chat)
+{
+	
+}
+
+void
+ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
+{
+	NingChat *chat;
+	JsonObject *obj;
+	
+	chat = userdata;
+	obj = ning_json_parse(response, len);
+}
+
+gboolean
+ning_chat_get_users(NingChat *chat)
+{
+	NingAccount *na;
+	gchar *postdata;
+	gchar *encoded_hash;
+	gchar *encoded_app;
+	gchar *encoded_id;
+	gchar *encoded_token;
+	gchar *encoded_room;
+	
+	na = chat->na;
+	
+	encoded_hash = g_strdup(purple_url_encode(chat->ning_hash));
+	encoded_app = g_strdup(purple_url_encode(na->ning_app));
+	encoded_id = g_strdup(purple_url_encode(na->ning_id));
+	encoded_token = g_strdup(purple_url_encode(na->chat_token));
+	encoded_room = g_strdup(purple_url_encode(chat->roomId));
+	
+	postdata = g_strdup_printf("h=%s&a=%s&i=%s&t=%s&r=%s", encoded_hash, encoded_app,
+							   encoded_id, encoded_token, encoded_room);
+	
+	ning_post_or_get(na, NING_METHOD_POST, na->chat_domain,
+					 "/xn/presence/list", postdata, 
+					 ning_chat_get_users_cb, chat, FALSE);
+	
+	g_free(postdata);
+	g_free(encoded_room);
+	g_free(encoded_token);
+	g_free(encoded_id);
+	g_free(encoded_app);
+	g_free(encoded_hash);
+	
+	return TRUE;
+}
+
+void
+ning_chat_poll_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
+{
+	NingChat *chat;
+	
+	chat = userdata;
+}
+
+gboolean
+ning_chat_poll_messages(NingChat *chat)
+{
+	
+}
+
 void
 ning_chat_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
 {
@@ -93,11 +177,29 @@ ning_chat_send(PurpleConnection *pc, int id, const char *message, PurpleMessageF
 void
 ning_join_chat_by_name(NingAccount *na, const gchar *roomId)
 {
+	NingChat *chat;
+	
 	if (na == NULL || roomId == NULL)
 		return;
 	
+	chat = g_new0(NingChat, 1);
+	chat->na = na;
+	chat->roomId = roomId;
+	chat->purple_id = g_str_hash(roomId);
+	chat->ning_hash = "null";
+	
 	serv_got_joined_chat(na->pc, g_str_hash(roomId), roomId);
 	
+	//get history
+	ning_chat_get_history(chat);
+	
+	//get user list
+	ning_chat_get_users(chat);
+	chat->userlist_timer = purple_timeout_add_seconds(60, ning_chat_get_users);
+	
+	//start message poll
+	ning_chat_poll_messages(chat);
+	chat->message_poll_timer = purple_timeout_add_seconds(180, ning_chat_poll_messages);
 }
 
 void 
