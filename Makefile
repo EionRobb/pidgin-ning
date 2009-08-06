@@ -19,7 +19,12 @@ MACPORT_CFLAGS = -I/opt/local/include/libpurple -DPURPLE_PLUGINS -DENABLE_NLS -D
 
 DEB_PACKAGE_DIR = ./debdir
 
-FACEBOOK_SOURCES = *.[ch]
+FACEBOOK_SOURCES = libning.c \
+		   libning.h \
+		   ning_chat.c \
+		   ning_chat.h \
+		   ning_connection.c \
+		   ning_connection.h
 
 #Standard stuff here
 .PHONY:	all clean install sourcepackage
@@ -62,7 +67,7 @@ libning.so:	${FACEBOOK_SOURCES}
 
 libning.dll:	${FACEBOOK_SOURCES}
 	${WIN32_COMPILER} ${LIBPURPLE_CFLAGS} -Wall -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -mno-cygwin ${WIN32_CFLAGS} ${WIN32_LIBS} -Wl,--strip-all
-	upx libfacebook.dll
+	upx libning.dll
 
 libning-debug.dll:	${FACEBOOK_SOURCES}
 	${WIN32_COMPILER} ${LIBPURPLE_CFLAGS} -Wall -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -mno-cygwin ${WIN32_CFLAGS} ${WIN32_LIBS}

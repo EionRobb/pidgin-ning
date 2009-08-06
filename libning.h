@@ -89,6 +89,7 @@ struct _NingAccount {
 	gchar *chat_token;
 };
 
+JsonObject *ning_json_parse(const gchar *data, gssize data_len);
 
 
 #endif /* LIBNING_H */
