@@ -47,7 +47,7 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	gchar *room_escaped;
 	gchar *app_escaped;
 	
-	na = pc->proto_info;
+	na = pc->proto_data;
 	conv = purple_find_chat(pc, id);
 	
 	app_escaped = g_strdup(purple_url_encode(na->ning_app));
@@ -56,10 +56,7 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	ning_id_escaped = g_strdup(purple_url_encode(na->ning_id));
 	
 	stripped = purple_markup_strip_html(message);
-	message_json = g_strdup_printf("{ \"roomId\":\"%s\", 
-									  \"type\":\"%s\", 
-									  \"targetId\":\"%s\", 
-									  \"body\":\"%s\" }",
+	message_json = g_strdup_printf("{ \"roomId\":\"%s\", \"type\":\"%s\", \"targetId\":\"%s\", \"body\":\"%s\" }",
 									  conv->name, (who?"private":"message"),
 									  (who?who:"null"), stripped);
 	message_escaped = g_strdup(purple_url_encode(message_json));
@@ -86,8 +83,6 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 int
 ning_chat_send(PurpleConnection *pc, int id, const char *message, PurpleMessageFlags flags)
 {
-	PurpleConversation *conv;
-	
 	if (flags != PURPLE_MESSAGE_SEND)
 		return -1;
 	
@@ -109,7 +104,6 @@ void
 ning_join_chat(PurpleConnection *pc, GHashTable *components)
 {
 	NingAccount *na;
-	const gchar *name;
 	
 	if (pc == NULL || pc->proto_data == NULL || components == NULL)
 		return;
