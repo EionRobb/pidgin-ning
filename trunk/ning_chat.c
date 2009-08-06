@@ -45,7 +45,7 @@ ning_chat_get_history_cb(NingAccount *na, gchar *response, gsize len, gpointer u
 gboolean
 ning_chat_get_history(NingChat *chat)
 {
-	
+	return FALSE;
 }
 
 void
@@ -105,7 +105,7 @@ ning_chat_poll_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer
 gboolean
 ning_chat_poll_messages(NingChat *chat)
 {
-	
+	return FALSE;
 }
 
 void
@@ -184,9 +184,9 @@ ning_join_chat_by_name(NingAccount *na, const gchar *roomId)
 	
 	chat = g_new0(NingChat, 1);
 	chat->na = na;
-	chat->roomId = roomId;
+	chat->roomId = g_strdup(roomId);
 	chat->purple_id = g_str_hash(roomId);
-	chat->ning_hash = "null";
+	chat->ning_hash = g_strdup("null");
 	
 	serv_got_joined_chat(na->pc, g_str_hash(roomId), roomId);
 	
@@ -195,11 +195,11 @@ ning_join_chat_by_name(NingAccount *na, const gchar *roomId)
 	
 	//get user list
 	ning_chat_get_users(chat);
-	chat->userlist_timer = purple_timeout_add_seconds(60, ning_chat_get_users);
+	chat->userlist_timer = purple_timeout_add_seconds(60, (GSourceFunc) ning_chat_get_users, chat);
 	
 	//start message poll
 	ning_chat_poll_messages(chat);
-	chat->message_poll_timer = purple_timeout_add_seconds(180, ning_chat_poll_messages);
+	chat->message_poll_timer = purple_timeout_add_seconds(180, (GSourceFunc) ning_chat_poll_messages, chat);
 }
 
 void 
