@@ -110,6 +110,7 @@ void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 {
 	JsonObject *obj;
 	gchar *postdata, *encoded_app, *encoded_id;
+	gchar *user_json, *user_encoded;
 
 	purple_debug_info("ning", "ning_chat_redir_cb: %s\n", data?data:"(null)");
 	
@@ -128,13 +129,18 @@ void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	encoded_app = g_strdup(purple_url_encode(na->ning_app));
 	encoded_id = g_strdup(purple_url_encode(na->ning_id));
 	
-	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s", encoded_app, encoded_app, encoded_id, encoded_id);
+	user_json = g_strdup_printf("{\"name\":\"\",\"iconUrl\":\"\",\"isAdmin\":0,\"ningId\":\"%s\",\"isNC\":0}", na->ning_id);
+	user_encoded = g_strdup(purple_url_encode(user_json));
+	
+	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s&user=%s", encoded_app, encoded_app, encoded_id, encoded_id, user_encoded);
 	ning_post_or_get(na, NING_METHOD_POST, na->chat_domain,
 			"/xn/presence/login", postdata, ning_chat_login_cb, NULL, FALSE);
 	
 	g_free(postdata);
 	g_free(encoded_app);
 	g_free(encoded_id);
+	g_free(user_encoded);
+	g_free(user_json);
 }
 
 void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer userdata)
