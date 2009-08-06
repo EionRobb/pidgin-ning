@@ -88,7 +88,7 @@ void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	// "count": 2,"token": "37lfxean70eqh_122d86d5cf7_6f95cb8e_122d49f8e48"}
 	
 	result = json_node_get_string(json_object_get_member(obj, "result"));
-	if (!g_str_equal(result, "ok"))
+	if (!result || !g_str_equal(result, "ok"))
 	{
 		purple_connection_error(na->pc, _("Could not log on"));
 		return;
@@ -110,6 +110,8 @@ void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 {
 	JsonObject *obj;
 	gchar *postdata, *encoded_app, *encoded_id;
+
+	purple_debug_info("ning", "ning_chat_redir_cb: %s\n", data?data:"(null)");
 	
 	//We get a randomly generated chat domain to use
 	// eg {"domain": "3841.chat07.ningim.com"}
@@ -324,6 +326,7 @@ ning_change_passwd(PurpleConnection *pc, const char *old_pass, const char *new_p
 	gchar *encoded_username;
 	gchar *encoded_password;
 	gchar *encoded_token;
+	gchar *postdata;
 	
 	if (pc == NULL)
 		return;
@@ -416,7 +419,7 @@ static PurplePluginProtocolInfo prpl_info = {
 	NULL,                   /* chat_invite */
 	NULL,                   /* chat_leave */
 	ning_chat_whisper,      /* chat_whisper */
-	ning_chat_chat,         /* chat_send */
+	ning_chat_send,         /* chat_send */
 	NULL,                   /* keepalive */
 	NULL,                   /* register_user */
 	NULL,                   /* get_cb_info */
