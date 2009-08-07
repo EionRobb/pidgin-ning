@@ -53,16 +53,38 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 {
 	NingChat *chat;
 	JsonObject *obj;
+	JsonArray *array;
+	JsonObject *userobj;
+	int i;
+
+	//
+	purple_debug_info("ning", "chat users: %s\n", response?response:"(null)");
 	
 	chat = userdata;
 	obj = ning_json_parse(response, len);
+	
+	if (json_object_has_member(obj, "hash"))
+	{
+		g_free(chat->hash);
+		chat->hash = g_strdup(json_node_get_string(json_object_get_member(obj, "hash")));
+	}
+	purple_conv_chat_clear_users(PURPLE_CONV_CHAT(conv));
+	array = json_node_get_array(json_object_get_member(obj, "users"));
+	for(i = 0; i < json_array_get_length(array); i++)
+	{
+		userobj = json_node_get_object(json_array_get_element(array, i));
+		//isNC, iconUrl, name, ningId, isAdmin
+		purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), username, 
+			NULL, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE,
+			FALSE);
+	}
 }
 
 gboolean
 ning_chat_get_users(NingChat *chat)
 {
 	NingAccount *na;
-	gchar *postdata;
+	gchar *url;
 	gchar *encoded_hash;
 	gchar *encoded_app;
 	gchar *encoded_id;
@@ -77,14 +99,14 @@ ning_chat_get_users(NingChat *chat)
 	encoded_token = g_strdup(purple_url_encode(na->chat_token));
 	encoded_room = g_strdup(purple_url_encode(chat->roomId));
 	
-	postdata = g_strdup_printf("h=%s&a=%s&i=%s&t=%s&r=%s", encoded_hash, encoded_app,
+	url = g_strdup_printf("/xn/presence/list?h=%s&a=%s&i=%s&t=%s&r=%s", encoded_hash, encoded_app,
 							   encoded_id, encoded_token, encoded_room);
 	
-	ning_post_or_get(na, NING_METHOD_POST, na->chat_domain,
-					 "/xn/presence/list", postdata, 
+	ning_post_or_get(na, NING_METHOD_GET, na->chat_domain,
+					 url, NULL, 
 					 ning_chat_get_users_cb, chat, FALSE);
 	
-	g_free(postdata);
+	g_free(url);
 	g_free(encoded_room);
 	g_free(encoded_token);
 	g_free(encoded_id);
