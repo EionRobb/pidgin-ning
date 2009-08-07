@@ -34,17 +34,96 @@ typedef struct _NingChat {
 	guint message_poll_timer;
 } NingChat;
 
+
+
 void
-ning_chat_get_history_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
+ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
 {
 	NingChat *chat;
+	JsonObject *obj;
+	JsonArray *array;
+	JsonObject *msgobj;
+	const gchar *type;
+	const gchar *body;
+	const gchar *roomId;
+	const gchar *targetId;
+	gint date;
+	JsonObject *sender;
+	const gchar *senderId;
 	
 	chat = userdata;
+	
+	purple_debug_info("ning", "ning_chat_messages_cb: %s\n", response?response:"(null)");
+	obj = ning_json_parse(response, len);
+	
+	if (json_object_has_member(obj, "hash"))
+	{
+		g_free(chat->hash);
+		chat->hash = g_strdup(json_node_get_string(json_object_get_member(obj, "hash")));
+	}
+	
+	array = json_node_get_array(json_object_get_member(obj, "messages"));
+	for(i = 0; i < json_array_get_length(array); i++)
+	{
+		msgobj = json_node_get_object(json_array_get_element(array, i));
+		//type (message or private)
+		//body, date, roomId, targetId, sender(obj)
+		type = json_node_get_string(json_object_get_member(msgobj, "type"));
+		body = json_node_get_string(json_object_get_member(msgobj, "body"));
+		date = json_node_get_int(json_object_get_member(msgobj, "date"));
+		roomId = json_node_get_string(json_object_get_member(msgobj, "roomId"));
+		targetId = json_node_get_string(json_object_get_member(msgobj, "targetId"));
+		sender = json_node_get_object(json_object_get_member(msgobj, "sender"));
+		senderId = json_node_get_string(json_object_get_member(sender, "ningId"));
+		
+		if (g_str_equal(type, "message"))
+		{
+			serv_got_chat_in(na->pc, chat->purple_id, senderId, PURPLE_MESSAGE_RECV, body, date);
+		} else if (g_str_equal(type, "private"))
+		{
+			serv_got_chat_in(na->pc, chat->purple_id, senderId,
+							 PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_WHISPER, body, date);
+		} else {
+			purple_debug_info("ning", "unknown message type: %s\n", type);
+		}
+	}
+	
+	json_object_unref(obj);
 }
 
 gboolean
 ning_chat_get_history(NingChat *chat)
 {
+	NingAccount *na;
+	gchar *url;
+	gchar *encoded_hash;
+	gchar *encoded_app;
+	gchar *encoded_id;
+	gchar *encoded_token;
+	gchar *encoded_room;
+	
+	na = chat->na;
+	
+	encoded_hash = g_strdup(purple_url_encode(chat->ning_hash));
+	encoded_app = g_strdup(purple_url_encode(na->ning_app));
+	encoded_id = g_strdup(purple_url_encode(na->ning_id));
+	encoded_token = g_strdup(purple_url_encode(na->chat_token));
+	encoded_room = g_strdup(purple_url_encode(chat->roomId));
+	
+	url = g_strdup_printf("/xn/groupchat/list?h=%s&a=%s&i=%s&t=%s&r=%s", encoded_hash, encoded_app,
+						  encoded_id, encoded_token, encoded_room);
+	
+	ning_post_or_get(na, NING_METHOD_GET, na->chat_domain,
+					 url, NULL, 
+					 ning_chat_messages_cb, chat, FALSE);
+	
+	g_free(url);
+	g_free(encoded_room);
+	g_free(encoded_token);
+	g_free(encoded_id);
+	g_free(encoded_app);
+	g_free(encoded_hash);
+	
 	return FALSE;
 }
 
@@ -56,6 +135,11 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	JsonArray *array;
 	JsonObject *userobj;
 	int i;
+	const gchar *ningId;
+	const gchar *name;
+	const gchar *iconUrl;
+	gboolean isAdmin;
+	
 
 	//
 	purple_debug_info("ning", "chat users: %s\n", response?response:"(null)");
@@ -74,10 +158,16 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	{
 		userobj = json_node_get_object(json_array_get_element(array, i));
 		//isNC, iconUrl, name, ningId, isAdmin
-		purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), username, 
+		ningId = json_node_get_string(json_object_get_member(userobj, "ningId"));
+		name = json_node_get_string(json_object_get_member(userobj, "name"));
+		isAdmin = json_node_get_boolean(json_object_get_member(userobj, "isAdmin"));
+		
+		purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), ningId, 
 			NULL, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE,
 			FALSE);
 	}
+	
+	json_object_unref(obj);
 }
 
 gboolean
@@ -116,18 +206,37 @@ ning_chat_get_users(NingChat *chat)
 	return TRUE;
 }
 
-void
-ning_chat_poll_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
-{
-	NingChat *chat;
-	
-	chat = userdata;
-}
-
 gboolean
 ning_chat_poll_messages(NingChat *chat)
 {
-	return FALSE;
+	NingAccount *na;
+	gchar *url;
+	gchar *encoded_app;
+	gchar *encoded_id;
+	gchar *encoded_token;
+	gchar *encoded_room;
+	
+	na = chat->na;
+	
+	encoded_app = g_strdup(purple_url_encode(na->ning_app));
+	encoded_id = g_strdup(purple_url_encode(na->ning_id));
+	encoded_token = g_strdup(purple_url_encode(na->chat_token));
+	encoded_room = g_strdup(purple_url_encode(chat->roomId));
+	
+	url = g_strdup_printf("/xn/groupchat/poll?a=%s&i=%s&t=%s&r=%s", encoded_app,
+						  encoded_id, encoded_token, encoded_room);
+	
+	ning_post_or_get(na, NING_METHOD_GET, na->chat_domain,
+					 url, NULL, 
+					 ning_chat_poll_messages_cb, chat, FALSE);
+	
+	g_free(url);
+	g_free(encoded_room);
+	g_free(encoded_token);
+	g_free(encoded_id);
+	g_free(encoded_app);
+	
+	return TRUE;
 }
 
 void
@@ -136,6 +245,8 @@ ning_chat_cb(NingAccount *na, gchar *response, gsize len, gpointer userdata)
 	PurpleConversation *conv;
 	
 	conv = userdata;
+	
+	purple_debug_info("ning", "ning_chat_cb: %s\n", response?response:"(null)");
 }
 
 void
