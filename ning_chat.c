@@ -50,6 +50,7 @@ ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer user
 	gint date;
 	JsonObject *sender;
 	const gchar *senderId;
+	guint i;
 	
 	chat = userdata;
 	
@@ -58,8 +59,8 @@ ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer user
 	
 	if (json_object_has_member(obj, "hash"))
 	{
-		g_free(chat->hash);
-		chat->hash = g_strdup(json_node_get_string(json_object_get_member(obj, "hash")));
+		g_free(chat->ning_hash);
+		chat->ning_hash = g_strdup(json_node_get_string(json_object_get_member(obj, "hash")));
 	}
 	
 	array = json_node_get_array(json_object_get_member(obj, "messages"));
@@ -137,9 +138,10 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	int i;
 	const gchar *ningId;
 	const gchar *name;
-	const gchar *iconUrl;
+	//const gchar *iconUrl;
 	gboolean isAdmin;
-	
+	PurpleConversation *conv;
+	PurpleConvChatBuddy *buddy;
 
 	//
 	purple_debug_info("ning", "chat users: %s\n", response?response:"(null)");
@@ -149,10 +151,13 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	
 	if (json_object_has_member(obj, "hash"))
 	{
-		g_free(chat->hash);
-		chat->hash = g_strdup(json_node_get_string(json_object_get_member(obj, "hash")));
+		g_free(chat->ning_hash);
+		chat->ning_hash = g_strdup(json_node_get_string(json_object_get_member(obj, "hash")));
 	}
+	
+	conv = purple_find_chat(na->pc, chat->purple_id);
 	purple_conv_chat_clear_users(PURPLE_CONV_CHAT(conv));
+	
 	array = json_node_get_array(json_object_get_member(obj, "users"));
 	for(i = 0; i < json_array_get_length(array); i++)
 	{
@@ -165,6 +170,14 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 		purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), ningId, 
 			NULL, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE,
 			FALSE);
+		buddy = purple_conv_chat_cb_find (PURPLE_CONV_CHAT(conv),
+			ningId);
+		if (buddy)
+		{
+			if (buddy->alias)
+				g_free(buddy->alias);
+			buddy->alias = g_strdup(name);
+		}
 	}
 	
 	json_object_unref(obj);
@@ -228,7 +241,7 @@ ning_chat_poll_messages(NingChat *chat)
 	
 	ning_post_or_get(na, NING_METHOD_GET, na->chat_domain,
 					 url, NULL, 
-					 ning_chat_poll_messages_cb, chat, FALSE);
+					 ning_chat_messages_cb, chat, FALSE);
 	
 	g_free(url);
 	g_free(encoded_room);
