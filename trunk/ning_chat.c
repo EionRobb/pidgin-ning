@@ -156,7 +156,13 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	}
 	
 	conv = purple_find_chat(na->pc, chat->purple_id);
-	purple_conv_chat_clear_users(PURPLE_CONV_CHAT(conv));
+
+	array = json_node_get_array(json_object_get_member(obj, "expired"));
+	for(i = 0; i < json_array_get_length(array); i++)
+	{
+		ningId = json_node_get_string(json_array_get_element(array, i));
+		purple_conv_chat_remove_user(PURPLE_CONV_CHAT(conv), ningId, NULL);
+	}
 	
 	array = json_node_get_array(json_object_get_member(obj, "users"));
 	for(i = 0; i < json_array_get_length(array); i++)
