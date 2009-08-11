@@ -143,6 +143,7 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	PurpleConversation *conv;
 //	PurpleBuddy *buddy;
 	PurpleConvChatBuddy *cbuddy;
+	PurpleConversationUiOps *uiops;
 
 	//
 	purple_debug_info("ning", "chat users: %s\n", response?response:"(null)");
@@ -157,6 +158,7 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	}
 	
 	conv = purple_find_chat(na->pc, chat->purple_id);
+	uiops = purple_conversation_get_ui_ops(conv);
 
 	array = json_node_get_array(json_object_get_member(obj, "expired"));
 	for(i = 0; i < json_array_get_length(array); i++)
@@ -174,14 +176,6 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 		name = json_node_get_string(json_object_get_member(userobj, "name"));
 		isAdmin = json_node_get_boolean(json_object_get_member(userobj, "isAdmin"));
 		
-		//buddy = purple_find_buddy(na->account, ningId);
-		//if (buddy == NULL)
-		//{
-		//	buddy = purple_buddy_new(na->account, ningId, name);
-		//	purple_account_add_buddy(na->account, buddy);
-		//} else {
-		//	purple_blist_server_alias_buddy(buddy, name);
-		//}
 		if (!purple_conv_chat_find_user(PURPLE_CONV_CHAT(conv), ningId))
 		{
 			purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), ningId, 
@@ -195,9 +189,17 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 			cbuddy->alias = g_strdup(name);
 		}
 		//Refresh the buddy
-		purple_conv_chat_user_set_flags(PURPLE_CONV_CHAT(conv), ningId, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE);
+		if (uiops && uiops->chat_update_user)
+		{
+			purple_debug_info("ning", "try update user %s\n", ningId);
+			uiops->chat_update_user(conv, ningId);
+		} else if (uiops && uiops->chat_rename_user)
+		{
+			purple_debug_info("ning", "try rename user %s to %s\n", ningId, name);
+			uiops->chat_rename_user(conv, ningId, ningId, name);
+		}
 	}
-	
+		
 	json_object_unref(obj);
 }
 
