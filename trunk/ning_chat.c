@@ -177,12 +177,16 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 		if (buddy == NULL)
 		{
 			buddy = purple_buddy_new(na->account, ningId, name);
+			purple_account_add_buddy(na->account, buddy);
 		} else {
 			purple_blist_server_alias_buddy(buddy, name);
 		}
-		purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), ningId, 
-			NULL, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE,
-			FALSE);
+		if (!purple_conv_chat_find_user(PURPLE_CONV_CHAT(conv), ningId))
+		{
+			purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), ningId, 
+				NULL, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE,
+				FALSE);
+		}
 	}
 	
 	json_object_unref(obj);
