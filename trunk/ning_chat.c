@@ -141,7 +141,8 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	//const gchar *iconUrl;
 	gboolean isAdmin;
 	PurpleConversation *conv;
-	PurpleBuddy *buddy;
+//	PurpleBuddy *buddy;
+	PurpleConvChatBuddy *cbuddy;
 
 	//
 	purple_debug_info("ning", "chat users: %s\n", response?response:"(null)");
@@ -173,20 +174,28 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 		name = json_node_get_string(json_object_get_member(userobj, "name"));
 		isAdmin = json_node_get_boolean(json_object_get_member(userobj, "isAdmin"));
 		
-		buddy = purple_find_buddy(na->account, ningId);
-		if (buddy == NULL)
-		{
-			buddy = purple_buddy_new(na->account, ningId, name);
-			purple_account_add_buddy(na->account, buddy);
-		} else {
-			purple_blist_server_alias_buddy(buddy, name);
-		}
+		//buddy = purple_find_buddy(na->account, ningId);
+		//if (buddy == NULL)
+		//{
+		//	buddy = purple_buddy_new(na->account, ningId, name);
+		//	purple_account_add_buddy(na->account, buddy);
+		//} else {
+		//	purple_blist_server_alias_buddy(buddy, name);
+		//}
 		if (!purple_conv_chat_find_user(PURPLE_CONV_CHAT(conv), ningId))
 		{
 			purple_conv_chat_add_user(PURPLE_CONV_CHAT(conv), ningId, 
 				NULL, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE,
 				FALSE);
 		}
+		cbuddy = purple_conv_chat_cb_find(PURPLE_CONV_CHAT(conv), ningId);
+		if (cbuddy)
+		{
+			g_free(cbuddy->alias);
+			cbuddy->alias = g_strdup(name);
+		}
+		//Refresh the buddy
+		purple_conv_chat_user_set_flags(PURPLE_CONV_CHAT(conv), ningId, isAdmin?PURPLE_CBFLAGS_OP:PURPLE_CBFLAGS_NONE);
 	}
 	
 	json_object_unref(obj);
