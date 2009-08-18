@@ -39,6 +39,43 @@ JsonObject *ning_json_parse(const gchar *data, gssize data_len)
 	return root_obj;
 }
 
+gchar *
+build_user_json(NingAccount *na)
+{
+	gchar *user_json;
+	gchar *escaped_name;
+	gchar *escaped_icon;
+	gchar *escaped_id;
+	
+	if (na && na->name)
+	{
+		escaped_name = g_strescape(na->name, "");
+	} else {
+		escaped_name = g_strdup("");
+	}
+	if (na && na->icon_url)
+	{
+		escaped_icon = g_strescape(na->icon_url, "");
+	} else {
+		escaped_icon = g_strdup("");
+	}
+	if (na && na->ning_id)
+	{
+		escaped_id = g_strescape(na->ning_id, "");
+	} else {
+		escaped_id = g_strdup("");
+	}
+	
+	user_json = g_strdup_printf("{\"name\":\"%s\",\"iconUrl\":\"%s\",\"isAdmin\":0,\"ningId\":\"%s\",\"isNC\":0}", 
+			escaped_name, escaped_icon, escaped_id);
+	
+	g_free(escaped_name);
+	g_free(escaped_icon);
+	g_free(escaped_id);
+	
+	return user_json;
+}
+
 
 
 /******************************************************************************/
@@ -129,7 +166,7 @@ void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	encoded_app = g_strdup(purple_url_encode(na->ning_app));
 	encoded_id = g_strdup(purple_url_encode(na->ning_id));
 	
-	user_json = g_strdup_printf("{\"name\":\"\",\"iconUrl\":\"\",\"isAdmin\":0,\"ningId\":\"%s\",\"isNC\":0}", na->ning_id);
+	user_json = build_user_json(na);
 	user_encoded = g_strdup(purple_url_encode(user_json));
 	
 	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s&user=%s", encoded_app, encoded_app, encoded_id, encoded_id, user_encoded);
@@ -149,23 +186,27 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	//<script>window.bzplcm.add({"app":"thoughtleaders","user":"37lfxean70eqh"
 	//and
 	//xg.token = 'b1a7f3ce1719481334cdcc5fe8eabcaa';
-	const gchar *start_string = "<script>window.bzplcm.add({\"app\":\"";
-	const gchar *mid_string = "\",\"user\":\"";
+	const gchar *start_string = "\nning = ";
+	const gchar *mid_string = "}};\n";
 	const gchar *xgtoken_start = "xg.token = '";
-	gchar *search, *tmp, *ning_id, *xg_token;
+	gchar *tmp, *ning_json_string, *xg_token;
 	gchar *url;
+	JsonObject *obj, *profile;
 	
-	search = g_strdup_printf("%s%s%s", start_string, na->ning_app, mid_string);
-	tmp = g_strstr_len(data, data_len, search);
+	tmp = g_strstr_len(data, data_len, start_string);
 	if (tmp == NULL)
 	{
 		purple_connection_error(na->pc, _("NingID not found"));
 		return;
 	}
-	tmp += strlen(search);
-	ning_id = g_strndup(tmp, strchr(tmp, '"') - tmp);
+	tmp += strlen(start_string);
+	ning_json_string = g_strndup(tmp, strstr(tmp, mid_string) - tmp + 2);
+	purple_debug_info("ning", "ning_json_string: %s\n", ning_json_string);
+	
+	obj = ning_json_parse(ning_json_string, strlen(ning_json_string));
+	profile = json_node_get_object(json_object_get_member(obj, "CurrentProfile"));
 	g_free(na->ning_id);
-	na->ning_id = ning_id;
+	na->ning_id = g_strdup(json_node_get_string(json_object_get_member(profile, "id")));
 	
 	tmp = g_strstr_len(data, data_len, xgtoken_start);
 	if (tmp == NULL)
@@ -286,9 +327,6 @@ static void ning_close(PurpleConnection *pc)
 	g_free(xg_token_encoded);
 	g_free(postdata);
 	
-	//if (na->new_messages_check_timer)
-	//	purple_timeout_remove(na->new_messages_check_timer);
-	
 	purple_debug_info("ning", "destroying %d incomplete connections\n",
 					  g_slist_length(na->conns));
 	
@@ -306,6 +344,21 @@ static void ning_close(PurpleConnection *pc)
 	g_hash_table_destroy(na->cookie_table);
 	g_hash_table_destroy(na->hostname_ip_cache);
 	
+	while (na->chats != NULL)
+	{	
+		NingChat *chat = na->chats->data;
+		na->chats = g_list_remove(na->chats, chat);
+		purple_timeout_remove(chat->userlist_timer);
+		purple_timeout_remove(chat->message_poll_timer);
+		purple_conv_chat_left(PURPLE_CONV_CHAT(purple_find_chat(pc, chat->purple_id)));
+		g_free(chat->roomId);
+		g_free(chat->ning_hash);
+		g_free(chat);
+	}
+	
+	g_free(na->ning_id);
+	g_free(na->name);
+	g_free(na->icon_url);
 	g_free(na->xg_token);
 	g_free(na->ning_app);
 	

@@ -74,22 +74,26 @@ struct _NingAccount {
 	PurpleAccount *account;
 	PurpleConnection *pc;
 	GHashTable *hostname_ip_cache;
-	GSList *conns; /**< A list of all active FacebookConnections */
+	GSList *conns; /**< A list of all active connections */
 	GSList *dns_queries;
+	GList *chats;
 	GHashTable *cookie_table;
 	
 	time_t last_messages_download_time;
 	
-	gchar *xg_token; /**< Used for finding information from host site */
+	gchar *xg_token;
 	
 	gchar *ning_app;
 	gchar *ning_id;
+	gchar *name;
+	gchar *icon_url;
 	
 	gchar *chat_domain;
 	gchar *chat_token;
 };
 
 JsonObject *ning_json_parse(const gchar *data, gssize data_len);
+gchar *build_user_json(NingAccount *na);
 
 
 #endif /* LIBNING_H */
