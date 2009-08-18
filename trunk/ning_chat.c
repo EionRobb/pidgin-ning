@@ -24,15 +24,6 @@ void (*join_chat)(PurpleConnection *, GHashTable *components);
 PurpleConversation* purple_find_chat(const PurpleConnection *gc, int id);
  */
 
-typedef struct _NingChat {
-	NingAccount *na;
-	gchar *roomId;
-	gint purple_id;
-	gchar *ning_hash;
-	
-	guint userlist_timer;
-	guint message_poll_timer;
-} NingChat;
 
 
 
@@ -168,6 +159,10 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	}
 	
 	array = json_node_get_array(json_object_get_member(obj, "users"));
+	if (array && json_array_get_length(array) > 0)
+	{
+		purple_conv_chat_clear_users(PURPLE_CONV_CHAT(conv));
+	}
 	for(i = 0; i < json_array_get_length(array); i++)
 	{
 		userobj = json_node_get_object(json_array_get_element(array, i));
@@ -189,14 +184,15 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 			cbuddy->alias = g_strdup(name);
 		}
 		//Refresh the buddy
-		if (uiops && uiops->chat_update_user)
-		{
-			purple_debug_info("ning", "try update user %s\n", ningId);
-			uiops->chat_update_user(conv, ningId);
-		} else if (uiops && uiops->chat_rename_user)
+		if (uiops && uiops->chat_rename_user)
 		{
 			purple_debug_info("ning", "try rename user %s to %s\n", ningId, name);
 			uiops->chat_rename_user(conv, ningId, ningId, name);
+		}
+		else if (uiops && uiops->chat_update_user)
+		{
+			purple_debug_info("ning", "try update user %s\n", ningId);
+			uiops->chat_update_user(conv, ningId);
 		}
 	}
 		
@@ -290,6 +286,7 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	PurpleConversation *conv;
 	gchar *postdata;
 	gchar *message_json;
+	gchar *sender;
 	
 	gchar *message_escaped;
 	gchar *ning_id_escaped;
@@ -305,10 +302,13 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	room_escaped = g_strdup(purple_url_encode(conv->name));
 	ning_id_escaped = g_strdup(purple_url_encode(na->ning_id));
 	
+	sender = build_user_json(na);
+	
 	stripped = purple_markup_strip_html(message);
-	message_json = g_strdup_printf("{ \"roomId\":\"%s\", \"type\":\"%s\", \"targetId\":\"%s\", \"body\":\"%s\" }",
+	message_json = g_strdup_printf("{ \"roomId\":\"%s\", \"type\":\"%s\", \"targetId\":\"%s\", \"body\":\"%s\", \"sender\":%s }",
 									  conv->name, (who?"private":"message"),
-									  (who?who:"null"), stripped);
+									  (who?who:"null"), stripped,
+									  sender);
 	message_escaped = g_strdup(purple_url_encode(message_json));
 	
 	postdata = g_strdup_printf("a=%s&i=%s&t=%s&r=%s&message=%s",
@@ -320,6 +320,7 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 					 "/xn/groupchat/publish", postdata, 
 					 ning_chat_cb, conv, FALSE);
 	
+	g_free(sender);
 	g_free(postdata);
 	g_free(message_escaped);
 	g_free(message_json);
@@ -366,6 +367,8 @@ ning_join_chat_by_name(NingAccount *na, const gchar *roomId)
 	//start message poll
 	ning_chat_poll_messages(chat);
 	chat->message_poll_timer = purple_timeout_add_seconds(180, (GSourceFunc) ning_chat_poll_messages, chat);
+
+	na->chats = g_list_append(na->chats, chat);
 }
 
 void 

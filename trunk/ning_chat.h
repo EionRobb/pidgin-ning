@@ -14,6 +14,16 @@
 #include "libning.h"
 #include "ning_connection.h"
 
+typedef struct _NingChat {
+	NingAccount *na;
+	gchar *roomId;
+	gint purple_id;
+	gchar *ning_hash;
+	
+	guint userlist_timer;
+	guint message_poll_timer;
+} NingChat;
+
 void ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *message);
 int ning_chat_send(PurpleConnection *pc, int id, const char *message, PurpleMessageFlags flags);
 void ning_join_chat_by_name(NingAccount *na, const gchar *roomId);
