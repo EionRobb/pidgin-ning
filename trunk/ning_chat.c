@@ -25,6 +25,18 @@ PurpleConversation* purple_find_chat(const PurpleConnection *gc, int id);
  */
 
 
+gint64 ning_time_kludge(gint initial_time)
+{
+	if (sizeof(gint) >= sizeof(gint64))
+		return initial_time;
+	
+	gint64 now_millis = (gint64) time(NULL);
+	now_millis *= 1000;
+	now_millis &= 0xFFFFFFFF00000000LL;
+	gint64 final_time = now_millis | ((guint)initial_time);
+
+	return final_time;
+}
 
 
 void
@@ -42,6 +54,7 @@ ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer user
 	JsonObject *sender;
 	const gchar *senderId;
 	guint i;
+	guint64 time_kludge;
 	
 	chat = userdata;
 	
@@ -68,13 +81,15 @@ ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer user
 		sender = json_node_get_object(json_object_get_member(msgobj, "sender"));
 		senderId = json_node_get_string(json_object_get_member(sender, "ningId"));
 		
+		time_kludge = ning_time_kludge(date);
+		
 		if (g_str_equal(type, "message"))
 		{
-			serv_got_chat_in(na->pc, chat->purple_id, senderId, PURPLE_MESSAGE_RECV, body, date);
+			serv_got_chat_in(na->pc, chat->purple_id, senderId, PURPLE_MESSAGE_RECV, body, time_kludge);
 		} else if (g_str_equal(type, "private"))
 		{
 			serv_got_chat_in(na->pc, chat->purple_id, senderId,
-							 PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_WHISPER, body, date);
+							 PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_WHISPER, body, time_kludge);
 		} else {
 			purple_debug_info("ning", "unknown message type: %s\n", type);
 		}
