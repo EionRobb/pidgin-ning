@@ -19,7 +19,8 @@ typedef struct _NingChat {
 	gchar *roomId;
 	gint purple_id;
 	gchar *ning_hash;
-	
+
+	gchar *name;	
 	guint userlist_timer;
 	guint message_poll_timer;
 } NingChat;
