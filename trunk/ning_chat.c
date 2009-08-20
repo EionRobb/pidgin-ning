@@ -320,10 +320,16 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	sender = build_user_json(na);
 	
 	stripped = purple_markup_strip_html(message);
-	message_json = g_strdup_printf("{ \"roomId\":\"%s\", \"type\":\"%s\", \"targetId\":\"%s\", \"body\":\"%s\", \"sender\":%s }",
-									  conv->name, (who?"private":"message"),
-									  (who?who:"null"), stripped,
+	if (who != NULL)
+	{
+		message_json = g_strdup_printf("{ \"roomId\":\"%s\", \"type\":\"private\", \"targetId\":\"%s\", \"body\":\"%s\", \"sender\":%s }",
+									  conv->name, who, stripped,
 									  sender);
+	} else {
+		message_json = g_strdup_printf("{ \"roomId\":\"%s\", \"type\":\"message\", \"targetId\":null, \"body\":\"%s\", \"sender\":%s }",
+									  conv->name, stripped,
+									  sender);		
+	}
 	message_escaped = g_strdup(purple_url_encode(message_json));
 	
 	postdata = g_strdup_printf("a=%s&i=%s&t=%s&r=%s&message=%s",

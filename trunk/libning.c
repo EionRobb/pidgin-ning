@@ -207,6 +207,10 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	profile = json_node_get_object(json_object_get_member(obj, "CurrentProfile"));
 	g_free(na->ning_id);
 	na->ning_id = g_strdup(json_node_get_string(json_object_get_member(profile, "id")));
+	g_free(na->name);
+	na->name = g_strdup(json_node_get_string(json_object_get_member(profile, "fullName")));
+	g_free(na->icon_url);
+	na->icon_url = g_strdup_printf("%s&width=16&height=16", json_node_get_string(json_object_get_member(profile, "photoUrl")));
 	
 	tmp = g_strstr_len(data, data_len, xgtoken_start);
 	if (tmp == NULL)
