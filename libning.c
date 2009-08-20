@@ -66,7 +66,7 @@ build_user_json(NingAccount *na)
 		escaped_id = g_strdup("");
 	}
 	
-	user_json = g_strdup_printf("{\"name\":\"%s\",\"iconUrl\":\"%s\",\"isAdmin\":0,\"ningId\":\"%s\",\"isNC\":0}", 
+	user_json = g_strdup_printf("{\"name\":\"%s\",\"iconUrl\":\"%s\",\"isAdmin\":\"0\",\"ningId\":\"%s\",\"isNC\":\"0\"}", 
 			escaped_name, escaped_icon, escaped_id);
 	
 	g_free(escaped_name);
