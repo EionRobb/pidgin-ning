@@ -444,7 +444,7 @@ static void plugin_init(PurplePlugin *plugin)
 
 static PurplePluginProtocolInfo prpl_info = {
 	/* options */
-	OPT_PROTO_UNIQUE_CHATNAME,
+	0,
 
 	NULL,                   /* user_splits */
 	NULL,                   /* protocol_options */
@@ -460,7 +460,7 @@ static PurplePluginProtocolInfo prpl_info = {
 	NULL,                   /* chat_info_defaults */
 	ning_login,             /* login */
 	ning_close,             /* close */
-	NULL,                   /* send_im */
+	ning_send_im,           /* send_im */
 	NULL,                   /* set_info */
 	NULL,                   /* send_typing */
 	NULL,                   /* get_info */

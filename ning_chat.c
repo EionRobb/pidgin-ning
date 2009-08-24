@@ -309,6 +309,8 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	gchar *room_escaped;
 	gchar *app_escaped;
 	
+	purple_debug_info("ning", "chat whisper %s %s\n", who, message);
+	
 	na = pc->proto_data;
 	conv = purple_find_chat(pc, id);
 	
@@ -351,6 +353,34 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	g_free(token_escaped);
 	g_free(room_escaped);
 }
+
+int
+ning_send_im(PurpleConnection *pc, const char *who, const char *message, PurpleMessageFlags flags)
+{
+	PurpleConversation *conv;
+	GList *chats;
+	PurpleConvChat *chat;
+	gint chat_id;
+	
+	if (flags != PURPLE_MESSAGE_SEND)
+		return -1;
+	
+	chats = purple_get_chats();
+	for (;chats;chats = chats->next)
+	{
+		conv = chats->data;
+		chat = PURPLE_CONV_CHAT(conv);
+		if (purple_conv_chat_find_user(chat, who))
+		{
+			chat_id = purple_conv_chat_get_id(chat);
+			ning_chat_whisper(pc, chat_id, who, message);
+			return 1;
+		}
+	}
+	
+	return -1;
+}
+
 
 int
 ning_chat_send(PurpleConnection *pc, int id, const char *message, PurpleMessageFlags flags)
