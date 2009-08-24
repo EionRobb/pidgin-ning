@@ -29,5 +29,6 @@ void ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char
 int ning_chat_send(PurpleConnection *pc, int id, const char *message, PurpleMessageFlags flags);
 void ning_join_chat_by_name(NingAccount *na, const gchar *roomId);
 void ning_join_chat(PurpleConnection *pc, GHashTable *components);
+int ning_send_im(PurpleConnection *pc, const char *who, const char *message, PurpleMessageFlags flags);
 
 #endif /* NING_CHAT_H */
