@@ -22,6 +22,7 @@
 #define LIBNING_H
 
 #define NING_PLUGIN_VERSION "0.01"
+#define NING_TEMP_GROUP_NAME "Ning Temp"
 
 #include <glib.h>
 

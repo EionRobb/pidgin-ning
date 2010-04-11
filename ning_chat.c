@@ -53,6 +53,8 @@ ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer user
 	gint date;
 	JsonObject *sender;
 	const gchar *senderId;
+	PurpleBuddy *buddy;
+	PurpleGroup *group;
 	guint i;
 	guint64 time_kludge;
 	
@@ -80,6 +82,24 @@ ning_chat_messages_cb(NingAccount *na, gchar *response, gsize len, gpointer user
 		targetId = json_node_get_string(json_object_get_member(msgobj, "targetId"));
 		sender = json_node_get_object(json_object_get_member(msgobj, "sender"));
 		senderId = json_node_get_string(json_object_get_member(sender, "ningId"));
+		
+		//Check that they're on the buddy list
+		buddy = purple_find_buddy(na->account, senderId);
+		if (!buddy)
+		{
+			//They aren't, so lets fake it
+			buddy = purple_buddy_new(na->account, senderId, 
+									 json_node_get_string(json_object_get_member(sender, "name")));
+			group = purple_find_group(NING_TEMP_GROUP_NAME);
+			if (!group)
+			{
+				group = purple_group_new(NING_TEMP_GROUP_NAME);
+				purple_blist_add_group(group, NULL);
+				purple_blist_node_set_flags(&group->node, PURPLE_BLIST_NODE_FLAG_NO_SAVE);
+			}
+			purple_blist_add_buddy(buddy, NULL, group, NULL);
+			purple_blist_node_set_flags(&buddy->node, PURPLE_BLIST_NODE_FLAG_NO_SAVE);
+		}
 		
 		time_kludge = ning_time_kludge(date);
 		
@@ -151,7 +171,6 @@ ning_chat_get_users_cb(NingAccount *na, gchar *response, gsize len, gpointer use
 	PurpleConvChatBuddy *cbuddy;
 	PurpleConversationUiOps *uiops;
 
-	//
 	purple_debug_info("ning", "chat users: %s\n", response?response:"(null)");
 	
 	chat = userdata;
