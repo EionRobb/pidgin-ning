@@ -314,6 +314,7 @@ static void ning_close(PurpleConnection *pc)
 	gchar *postdata;
 	gchar *host_encoded;
 	gchar *xg_token_encoded;
+	PurpleDnsQueryData *dns_query;
 	
 	purple_debug_info("ning", "disconnecting account\n");
 	
@@ -338,7 +339,7 @@ static void ning_close(PurpleConnection *pc)
 		ning_connection_destroy(na->conns->data);
 	
 	while (na->dns_queries != NULL) {
-		PurpleDnsQueryData *dns_query = na->dns_queries->data;
+		dns_query = na->dns_queries->data;
 		purple_debug_info("ning", "canceling dns query for %s\n",
 						  purple_dnsquery_get_host(dns_query));
 		na->dns_queries = g_slist_remove(na->dns_queries, dns_query);
@@ -368,6 +369,7 @@ static void ning_close(PurpleConnection *pc)
 	
 	g_free(na);
 }
+
 #if PURPLE_MAJOR_VERSION >= 2 && PURPLE_MINOR_VERSION >= 5
 static GHashTable *ning_get_account_text_table(PurpleAccount *account)
 {
