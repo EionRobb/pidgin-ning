@@ -32,75 +32,75 @@ FACEBOOK_SOURCES = libning.c \
 #all:	libfacebook.so libfacebook.dll libfacebook64.so libfacebookarm.so libfacebookppc.so installers sourcepackage
 all:	libning.so libning.dll
 
-install:
-	cp libfacebook.so /usr/lib/purple-2/
-	cp libfacebook64.so /usr/lib64/purple-2/
-	cp libfacebookarm.so /usr/lib/pidgin/
-	cp libfacebookppc.so /usr/lib/purple-2/
-	cp facebook16.png /usr/share/pixmaps/pidgin/protocols/16/facebook.png
-	cp facebook22.png /usr/share/pixmaps/pidgin/protocols/22/facebook.png
-	cp facebook48.png /usr/share/pixmaps/pidgin/protocols/48/facebook.png
+# install:
+	# cp libfacebook.so /usr/lib/purple-2/
+	# cp libfacebook64.so /usr/lib64/purple-2/
+	# cp libfacebookarm.so /usr/lib/pidgin/
+	# cp libfacebookppc.so /usr/lib/purple-2/
+	# cp facebook16.png /usr/share/pixmaps/pidgin/protocols/16/facebook.png
+	# cp facebook22.png /usr/share/pixmaps/pidgin/protocols/22/facebook.png
+	# cp facebook48.png /usr/share/pixmaps/pidgin/protocols/48/facebook.png
 
-installers:	pidgin-facebookchat.exe pidgin-facebookchat.deb pidgin-facebookchat.tar.bz2
+# installers:	pidgin-facebookchat.exe pidgin-facebookchat.deb pidgin-facebookchat.tar.bz2
 
-clean:
-	rm -f libfacebook.so libfacebook.dll libfacebook64.so libfacebookarm.so libfacebookppc.so pidgin-facebookchat.exe pidgin-facebookchat.deb pidgin-facebookchat.tar.bz2 pidgin-facebookchat-source.tar.bz2
-	rm -rf pidgin-facebookchat
+# clean:
+	# rm -f libfacebook.so libfacebook.dll libfacebook64.so libfacebookarm.so libfacebookppc.so pidgin-facebookchat.exe pidgin-facebookchat.deb pidgin-facebookchat.tar.bz2 pidgin-facebookchat-source.tar.bz2
+	# rm -rf pidgin-facebookchat
 
 libning.so:	${FACEBOOK_SOURCES}
-	${LINUX32_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o libning.so -shared -fPIC -DPIC
+	${LINUX32_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -fPIC -DPIC
 
-#libfacebookarm.so:	${FACEBOOK_SOURCES}
-#	${LINUX_ARM_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o libfacebookarm.so -shared -fPIC -DPIC
-#
-#libfacebook64.so:	${FACEBOOK_SOURCES}
-#	${LINUX64_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -m64 -O2 -pipe ${FACEBOOK_SOURCES} -o libfacebook64.so -shared -fPIC -DPIC
-#
-#libfacebookppc.so:	${FACEBOOK_SOURCES}
-#	${LINUX_PPC_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o libfacebookppc.so -shared -fPIC -DPIC
-#
+libningarm.so:	${FACEBOOK_SOURCES}
+	${LINUX_ARM_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -fPIC -DPIC
+
+libning64.so:	${FACEBOOK_SOURCES}
+	${LINUX64_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -m64 -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -fPIC -DPIC
+
+libningppc.so:	${FACEBOOK_SOURCES}
+	${LINUX_PPC_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -fPIC -DPIC
+
 libfacebookmacport.so: ${FACEBOOK_SOURCES}
-	${MACPORT_COMPILER} ${MACPORT_CFLAGS} -Wall -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o libfacebookmacport.so -shared
+	${MACPORT_COMPILER} ${MACPORT_CFLAGS} -Wall -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared
 #
 #pidgin-facebookchat.res:	pidgin-facebookchat.rc
 #	${WIN32_WINDRES} $< -O coff -o $@
 
 libning.dll:	${FACEBOOK_SOURCES}
 	${WIN32_COMPILER} ${LIBPURPLE_CFLAGS} -Wall -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -mno-cygwin ${WIN32_CFLAGS} ${WIN32_LIBS} -Wl,--strip-all
-	upx libning.dll
+	upx $@
 
 libning-debug.dll:	${FACEBOOK_SOURCES}
 	${WIN32_COMPILER} ${LIBPURPLE_CFLAGS} -Wall -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -mno-cygwin ${WIN32_CFLAGS} ${WIN32_LIBS}
 #
-#libfacebookbsd60.so:	${FACEBOOK_SOURCES}
-#	${FREEBSD60_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o libfacebook.so -shared -fPIC -DPIC
+#libningbsd60.so:	${FACEBOOK_SOURCES}
+#	${FREEBSD60_COMPILER} ${LIBPURPLE_CFLAGS} -Wall ${GLIB_CFLAGS} -I. -g -O2 -pipe ${FACEBOOK_SOURCES} -o $@ -shared -fPIC -DPIC
 
 
-pidgin-facebookchat.exe:	libfacebook.dll
-	echo "Dont forget to update version number"
-	makensis facebook.nsi > /dev/null
+# pidgin-facebookchat.exe:	libfacebook.dll
+	# echo "Dont forget to update version number"
+	# makensis facebook.nsi > /dev/null
 	
-pidgin-facebookchat.deb:	libfacebook.so libfacebookarm.so libfacebook64.so libfacebookppc.so
-	echo "Dont forget to update version number"
-	cp libfacebook.so ${DEB_PACKAGE_DIR}/usr/lib/purple-2/
-	cp libfacebookppc.so ${DEB_PACKAGE_DIR}/usr/lib/purple-2/
-	cp libfacebook64.so ${DEB_PACKAGE_DIR}/usr/lib64/purple-2/
-	cp libfacebookarm.so ${DEB_PACKAGE_DIR}/usr/lib/pidgin/
-	cp facebook16.png ${DEB_PACKAGE_DIR}/usr/share/pixmaps/pidgin/protocols/16/facebook.png
-	cp facebook22.png ${DEB_PACKAGE_DIR}/usr/share/pixmaps/pidgin/protocols/22/facebook.png
-	cp facebook48.png ${DEB_PACKAGE_DIR}/usr/share/pixmaps/pidgin/protocols/48/facebook.png
-	chown -R root:root ${DEB_PACKAGE_DIR}
-	chmod -R 755 ${DEB_PACKAGE_DIR}
-	dpkg-deb --build ${DEB_PACKAGE_DIR} $@ > /dev/null
+# pidgin-facebookchat.deb:	libfacebook.so libfacebookarm.so libfacebook64.so libfacebookppc.so
+	# echo "Dont forget to update version number"
+	# cp libfacebook.so ${DEB_PACKAGE_DIR}/usr/lib/purple-2/
+	# cp libfacebookppc.so ${DEB_PACKAGE_DIR}/usr/lib/purple-2/
+	# cp libfacebook64.so ${DEB_PACKAGE_DIR}/usr/lib64/purple-2/
+	# cp libfacebookarm.so ${DEB_PACKAGE_DIR}/usr/lib/pidgin/
+	# cp facebook16.png ${DEB_PACKAGE_DIR}/usr/share/pixmaps/pidgin/protocols/16/facebook.png
+	# cp facebook22.png ${DEB_PACKAGE_DIR}/usr/share/pixmaps/pidgin/protocols/22/facebook.png
+	# cp facebook48.png ${DEB_PACKAGE_DIR}/usr/share/pixmaps/pidgin/protocols/48/facebook.png
+	# chown -R root:root ${DEB_PACKAGE_DIR}
+	# chmod -R 755 ${DEB_PACKAGE_DIR}
+	# dpkg-deb --build ${DEB_PACKAGE_DIR} $@ > /dev/null
 
-pidgin-facebookchat.tar.bz2:	pidgin-facebookchat.deb
-	tar --bzip2 --directory ${DEB_PACKAGE_DIR} -cf $@ usr/
+# pidgin-facebookchat.tar.bz2:	pidgin-facebookchat.deb
+	# tar --bzip2 --directory ${DEB_PACKAGE_DIR} -cf $@ usr/
 
-sourcepackage:	${FACEBOOK_SOURCES} Makefile facebook16.png facebook22.png facebook48.png COPYING facebook.nsi
-	tar -cf tmp.tar $^
-	mkdir pidgin-facebookchat
-	mv tmp.tar pidgin-facebookchat
-	tar xvf pidgin-facebookchat/tmp.tar -C pidgin-facebookchat
-	rm pidgin-facebookchat/tmp.tar
-	tar --bzip2 -cf pidgin-facebookchat-source.tar.bz2 pidgin-facebookchat
-	rm -rf pidgin-facebookchat
+# sourcepackage:	${FACEBOOK_SOURCES} Makefile facebook16.png facebook22.png facebook48.png COPYING facebook.nsi
+	# tar -cf tmp.tar $^
+	# mkdir pidgin-facebookchat
+	# mv tmp.tar pidgin-facebookchat
+	# tar xvf pidgin-facebookchat/tmp.tar -C pidgin-facebookchat
+	# rm pidgin-facebookchat/tmp.tar
+	# tar --bzip2 -cf pidgin-facebookchat-source.tar.bz2 pidgin-facebookchat
+	# rm -rf pidgin-facebookchat
