@@ -187,9 +187,9 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	//and
 	//xg.token = 'b1a7f3ce1719481334cdcc5fe8eabcaa';
 	const gchar *start_string = "\nning = ";
-	const gchar *mid_string = "}};\n";
+	const gchar *mid_string = "};\n";
 	const gchar *xgtoken_start = "xg.token = '";
-	gchar *tmp, *ning_json_string, *xg_token;
+	gchar *tmp, *ning_json_string, *xg_token, *endpos;
 	gchar *url;
 	JsonObject *obj, *profile;
 	
@@ -200,7 +200,15 @@ void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 		return;
 	}
 	tmp += strlen(start_string);
-	ning_json_string = g_strndup(tmp, strstr(tmp, mid_string) - tmp + 2);
+	
+	endpos = strstr(tmp, mid_string);
+	if (endpos == NULL)
+	{
+		purple_connection_error(na->pc, _("NingID not found"));
+		return;
+	}
+	
+	ning_json_string = g_strndup(tmp, endpos - tmp + 1);
 	purple_debug_info("ning", "ning_json_string: %s\n", ning_json_string);
 	
 	obj = ning_json_parse(ning_json_string, strlen(ning_json_string));
