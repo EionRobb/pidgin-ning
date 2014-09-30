@@ -270,6 +270,7 @@ static void ning_login(PurpleAccount *account)
 	gchar *postdata, *encoded_username, *encoded_password;
 	gchar *encoded_host, *url;
 	const gchar *host;
+	gchar *newhost;
 	
 	purple_debug_info("ning", "login\n");
 	
@@ -306,6 +307,25 @@ static void ning_login(PurpleAccount *account)
 	{
 		purple_connection_error(na->pc, _("Host not set"));
 		return;
+	}
+	
+	// Clean up the host if we were given a URL instead of a hostname
+	if (g_str_has_prefix(host, "http://"))
+	{
+		host = host + 7;
+		purple_account_set_string(account, "host", host);
+	} else if (g_str_has_prefix(host, "https://"))
+	{
+		host = host + 8;
+		purple_account_set_string(account, "host", host);
+	}
+	if (strchr(host, '/'))
+	{
+		newhost = g_strdup(host);
+		*(strchr(newhost, '/')) = '\0';
+		purple_account_set_string(account, "host", newhost);
+		g_free(newhost);
+		host = purple_account_get_string(account, "host", host);
 	}
 	
 	encoded_host = g_strdup(purple_url_encode(host));
