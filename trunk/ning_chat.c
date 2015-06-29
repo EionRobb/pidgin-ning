@@ -334,7 +334,7 @@ ning_chat_whisper(PurpleConnection *pc, int id, const char *who, const char *mes
 	conv = purple_find_chat(pc, id);
 	
 	app_escaped = g_strdup(purple_url_encode(na->ning_app));
-	token_escaped = g_strdup(purple_url_encode(na->xg_token));
+	token_escaped = g_strdup(purple_url_encode(na->chat_token));
 	room_escaped = g_strdup(purple_url_encode(conv->name));
 	ning_id_escaped = g_strdup(purple_url_encode(na->ning_id));
 	

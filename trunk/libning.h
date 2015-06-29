@@ -82,8 +82,6 @@ struct _NingAccount {
 	
 	time_t last_messages_download_time;
 	
-	gchar *xg_token;
-	
 	gchar *ning_app;
 	gchar *ning_id;
 	gchar *name;

@@ -28,6 +28,11 @@ JsonObject *ning_json_parse(const gchar *data, gssize data_len)
 	JsonNode *root_node;
 	JsonObject *root_obj;
 	
+	if (data[0] == '(') {
+		data = &data[1];
+		data_len -= 2;
+	}
+	
 	parser = json_parser_new();
 	json_parser_load_from_data(parser, data, (gssize) data_len, NULL);
 	
@@ -114,24 +119,34 @@ void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	const gchar *result;
 	const gchar *roomId;
 	
+	if (data == NULL || data_len == 0) {
+		purple_connection_error(na->pc, _("Could not connect to chat"));
+		return;
+	}
+	
 	obj = ning_json_parse(data, data_len);
 
 	purple_debug_info("ning", "chat_login_cb: %s\n", data?data:"(null)");
-	
-	if (data == NULL || data_len == 0)
-		return;
 	
 	//{"command": "login","result": "ok","roomId": "thoughtleaders.thoughtleaders",
 	// "count": 2,"token": "37lfxean70eqh_122d86d5cf7_6f95cb8e_122d49f8e48"}
 	
 	result = json_node_get_string(json_object_get_member(obj, "result"));
-	if (!result || !g_str_equal(result, "ok"))
-	{
+	if (!result || !g_str_equal(result, "ok")) {
 		purple_connection_error(na->pc, _("Could not log on"));
 		return;
 	}
-	purple_connection_update_progress(na->pc, _("Joining public chat"), 5, 5);
-	purple_connection_set_state(na->pc, PURPLE_CONNECTED);
+	purple_connection_update_progress(na->pc, _("Joining public chat"), 3, 5);
+	
+	
+	g_free(na->chat_domain);
+	na->chat_domain = g_strdup(json_node_get_string(json_object_get_member(obj, "domain")));
+	g_free(na->ning_id);
+	na->ning_id = g_strdup(json_node_get_string(json_object_get_member(obj, "userId")));
+	g_free(na->name);
+	na->name = g_strdup(json_node_get_string(json_object_get_member(obj, "userName")));
+	g_free(na->icon_url);
+	na->icon_url = g_strdup(json_node_get_string(json_object_get_member(obj, "userThumbnailUrl")));
 	
 	g_free(na->chat_token);
 	na->chat_token = g_strdup(json_node_get_string(json_object_get_member(obj, "token")));
@@ -141,103 +156,8 @@ void ning_chat_login_cb(NingAccount *na, gchar *data, gsize data_len, gpointer u
 	ning_join_chat_by_name(na, roomId);
 	
 	json_object_unref(obj);
-}
-
-void ning_chat_redir_cb(NingAccount *na, gchar *data, gsize data_len, gpointer userdata)
-{
-	JsonObject *obj;
-	gchar *postdata, *encoded_app, *encoded_id;
-	gchar *user_json, *user_encoded;
-
-	purple_debug_info("ning", "ning_chat_redir_cb: %s\n", data?data:"(null)");
 	
-	//We get a randomly generated chat domain to use
-	// eg {"domain": "3841.chat07.ningim.com"}
-	obj = ning_json_parse(data, data_len);
-	
-	g_free(na->chat_domain);
-	na->chat_domain = g_strdup(json_node_get_string(json_object_get_member(obj, "domain")));
-	
-	json_object_unref(obj);
-	
-	//Use our new domain to log into the chat servers
-	purple_connection_update_progress(na->pc, _("Logging into chat"), 4, 5);
-	
-	encoded_app = g_strdup(purple_url_encode(na->ning_app));
-	encoded_id = g_strdup(purple_url_encode(na->ning_id));
-	
-	user_json = build_user_json(na);
-	user_encoded = g_strdup(purple_url_encode(user_json));
-	
-	postdata = g_strdup_printf("a=%s&t=%s%s&i=%s&user=%s", encoded_app, encoded_app, encoded_id, encoded_id, user_encoded);
-	ning_post_or_get(na, NING_METHOD_POST, na->chat_domain,
-			"/xn/presence/login", postdata, ning_chat_login_cb, NULL, FALSE);
-	
-	g_free(postdata);
-	g_free(encoded_app);
-	g_free(encoded_id);
-	g_free(user_encoded);
-	g_free(user_json);
-}
-
-void ning_login_home_cb(NingAccount *na, gchar *data, gsize data_len, gpointer userdata)
-{
-	//We need to look for 
-	//<script>window.bzplcm.add({"app":"thoughtleaders","user":"37lfxean70eqh"
-	//and
-	//xg.token = 'b1a7f3ce1719481334cdcc5fe8eabcaa';
-	const gchar *start_string = "\nning = ";
-	const gchar *mid_string = "};\n";
-	const gchar *xgtoken_start = "xg.token = '";
-	gchar *tmp, *ning_json_string, *xg_token, *endpos;
-	gchar *url;
-	JsonObject *obj, *profile;
-	
-	tmp = g_strstr_len(data, data_len, start_string);
-	if (tmp == NULL)
-	{
-		purple_connection_error(na->pc, _("NingID not found"));
-		return;
-	}
-	tmp += strlen(start_string);
-	
-	endpos = strstr(tmp, mid_string);
-	if (endpos == NULL)
-	{
-		purple_connection_error(na->pc, _("NingID not found"));
-		return;
-	}
-	
-	ning_json_string = g_strndup(tmp, endpos - tmp + 1);
-	purple_debug_info("ning", "ning_json_string: %s\n", ning_json_string);
-	
-	obj = ning_json_parse(ning_json_string, strlen(ning_json_string));
-	profile = json_node_get_object(json_object_get_member(obj, "CurrentProfile"));
-	g_free(na->ning_id);
-	na->ning_id = g_strdup(json_node_get_string(json_object_get_member(profile, "id")));
-	g_free(na->name);
-	na->name = g_strdup(json_node_get_string(json_object_get_member(profile, "fullName")));
-	g_free(na->icon_url);
-	na->icon_url = g_strdup_printf("%s&width=16&height=16", json_node_get_string(json_object_get_member(profile, "photoUrl")));
-	
-	tmp = g_strstr_len(data, data_len, xgtoken_start);
-	if (tmp == NULL)
-	{
-		purple_connection_error(na->pc, _("xgToken not found"));
-		return;
-	}
-	tmp += strlen(xgtoken_start);
-	xg_token = g_strndup(tmp, strchr(tmp, '\'') - tmp);
-	g_free(na->xg_token);
-	na->xg_token = xg_token;
-	
-	//Now we should have everything we need to sign into chat
-	purple_connection_update_progress(na->pc, _("Fetching chat server"), 3, 5);
-	
-	url = g_strdup_printf("/xn/redirector/redirect?a=%s", purple_url_encode(na->ning_app));
-	ning_post_or_get(na, NING_METHOD_GET, "chat01.ningim.com",
-					 url, NULL, ning_chat_redir_cb, NULL, FALSE);
-	g_free(url);
+	purple_connection_set_state(na->pc, PURPLE_CONNECTED);
 }
 
 void ning_scan_cookies_for_id(gchar *key, gchar *value, NingAccount *na)
@@ -259,9 +179,14 @@ static void ning_login_cb(NingAccount *na, gchar *response, gsize len,
 	// Pull the host's Ning account id from the cookie
 	g_hash_table_foreach(na->cookie_table, (GHFunc)ning_scan_cookies_for_id, na);
 	
-	//Load the homepage to grab the interesting info
+	if (!na->ning_app) {
+		purple_connection_error(na->pc, _("Bad username/password"));
+		return;
+	}
+	
+	//Login to chat to grab the interesting info
 	ning_post_or_get(na, NING_METHOD_GET, purple_account_get_string(na->account, "host", NULL),
-					"/", NULL, ning_login_home_cb, NULL, FALSE);
+					"/chat/index/login", NULL, ning_chat_login_cb, NULL, FALSE);
 }
 
 static void ning_login(PurpleAccount *account)
@@ -329,7 +254,7 @@ static void ning_login(PurpleAccount *account)
 	}
 	
 	encoded_host = g_strdup(purple_url_encode(host));
-	url = g_strdup_printf("/main/authorization/doSignIn?target=http%%3A%%2F%%2F%s", host); 
+	url = g_strdup_printf("/main/authorization/doSignIn?target=http%%3A%%2F%%2F%s%%2Fchat%%2Findex%%2Flogin", host); 
 	
 	ning_post_or_get(na, NING_METHOD_POST | NING_METHOD_SSL, host,
 					url, postdata, ning_login_cb, NULL, FALSE);
@@ -341,7 +266,6 @@ static void ning_close(PurpleConnection *pc)
 	NingAccount *na;
 	gchar *postdata;
 	gchar *host_encoded;
-	gchar *xg_token_encoded;
 	PurpleDnsQueryData *dns_query;
 	
 	purple_debug_info("ning", "disconnecting account\n");
@@ -349,15 +273,13 @@ static void ning_close(PurpleConnection *pc)
 	na = pc->proto_data;
 	
 	host_encoded = g_strdup(purple_url_encode(purple_account_get_string(na->account, "host", "")));
-	xg_token_encoded = g_strdup(purple_url_encode(na->xg_token));
 	
-	postdata = g_strdup_printf("target=%s&xg_token=%s", host_encoded, xg_token_encoded);
+	postdata = g_strdup_printf("target=%s&xg_token=", host_encoded);
 	
 	ning_post_or_get(na, NING_METHOD_POST, purple_account_get_string(na->account, "host", NULL),
 					 "/main/authorization/signOut", postdata, NULL, NULL, FALSE);
 	
 	g_free(host_encoded);
-	g_free(xg_token_encoded);
 	g_free(postdata);
 	
 	purple_debug_info("ning", "destroying %d incomplete connections\n",
@@ -392,7 +314,6 @@ static void ning_close(PurpleConnection *pc)
 	g_free(na->ning_id);
 	g_free(na->name);
 	g_free(na->icon_url);
-	g_free(na->xg_token);
 	g_free(na->ning_app);
 	
 	g_free(na);
@@ -410,41 +331,6 @@ static GHashTable *ning_get_account_text_table(PurpleAccount *account)
 	return table;
 }
 #endif
-
-void
-ning_change_passwd(PurpleConnection *pc, const char *old_pass, const char *new_pass)
-{
-	NingAccount *na;
-	PurpleAccount *account;
-	gchar *encoded_username;
-	gchar *encoded_password;
-	gchar *encoded_token;
-	gchar *postdata;
-	
-	if (pc == NULL)
-		return;
-	na = pc->proto_data;
-	if (na == NULL || na->xg_token == NULL)
-		return;
-	account = pc->account;
-	if (account == NULL)
-		return;
-	
-	encoded_username = g_strdup(purple_url_encode(purple_account_get_username(account)));
-	encoded_password = g_strdup(purple_url_encode(new_pass));
-	encoded_token = g_strdup(purple_url_encode(na->xg_token));
-	
-	postdata = g_strdup_printf("emailAddress=%s&password=%s&xg_token=%s",
-							   encoded_username, encoded_password, encoded_token);
-	
-	ning_post_or_get(na, NING_METHOD_POST, purple_account_get_string(na->account, "host", NULL),
-					 "/profiles/settings/updateEmailAddress", postdata, NULL, NULL, FALSE);
-	
-	g_free(postdata);
-	g_free(encoded_token);
-	g_free(encoded_password);
-	g_free(encoded_username);
-}
 
 
 /******************************************************************************/
@@ -496,7 +382,7 @@ static PurplePluginProtocolInfo prpl_info = {
 	NULL,                   /* get_info */
 	NULL,                   /* set_status */
 	NULL,                   /* set_idle */
-	ning_change_passwd,     /* change_passwd */
+	NULL,                   /* change_passwd */
 	NULL,                   /* add_buddy */
 	NULL,                   /* add_buddies */
 	NULL,                   /* remove_buddy */
