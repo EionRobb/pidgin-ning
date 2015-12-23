@@ -1,0 +1,3 @@
+A lot of people are starting to use Ning for building their social networking websites.  This plugin will let you login to the chat area's, normally at the bottom of your screen in your Ning community.
+
+You'll need libjson-glib to use this plugin.  You can grab the dll for Windows from [here](http://pidgin-ning.googlecode.com/svn/trunk/libjson-glib-1.0.dll) (copy to your ProgramFiles\Pidgin folder)
